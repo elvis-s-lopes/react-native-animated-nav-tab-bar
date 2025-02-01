@@ -10,10 +10,8 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   Animated,
-  BackHandler,
   Dimensions,
   I18nManager,
-  Platform,
   StyleSheet,
   View,
 } from "react-native";
