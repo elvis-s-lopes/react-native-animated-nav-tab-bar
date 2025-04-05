@@ -15,7 +15,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { ScreenContainer } from "react-native-screens";
+import { ScreenContainer as RNScreenContainer } from "react-native-screens";
 import ResourceSavingScene from "./ResourceSavingScene";
 import { IAppearanceOptions, TabElementDisplayOptions } from "./types";
 import { BottomTabBarWrapper, Dot, Label, TabButton } from "./UIComponents";
@@ -49,7 +49,7 @@ export default ({
   appearance,
   tabBarOptions,
   lazy,
-}: TabBarElementProps) => {
+}: TabBarElementProps): JSX.Element => {
   // Appearance options destruction
   const {
     topPadding,
@@ -76,12 +76,15 @@ export default ({
   } = tabBarOptions;
 
   // State
-  const [prevPos, setPrevPos] = useState(horizontalPadding);
-  const [pos, setPos] = useState(prevPos);
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
-  const [animatedPos] = useState(() => new Animated.Value(1));
   const [loaded, setLoaded] = useState([state.index]);
+  const [positions, setPositions] = useState<{[key: string]: number}>({});
+  const [widths, setWidths] = useState<{[key: string]: number}>({});
+  const [heights, setHeights] = useState<{[key: string]: number}>({});
+  
+  // Animated value
+  const [animatedLeftPosition] = useState(new Animated.Value(0));
 
   useEffect(() => {
     const { index } = state;
@@ -93,17 +96,29 @@ export default ({
   const [isPortrait, setIsPortrait] = useState(true);
 
   // Reset animation when changing screen orientation
-  Dimensions.addEventListener("change", () => {
-    if (
-      (isPortrait && !didChangeToPortrait()) ||
-      (!isPortrait && didChangeToPortrait())
-    ) {
-      setIsPortrait(!isPortrait);
-      animation(animatedPos).start(() => {
-        updatePrevPos();
-      });
-    }
-  });
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", () => {
+      if (
+        (isPortrait && !didChangeToPortrait()) ||
+        (!isPortrait && didChangeToPortrait())
+      ) {
+        setIsPortrait(!isPortrait);
+        
+        // Get current tab position and dimensions
+        const currentKey = state.routes[state.index].key;
+        if (positions[currentKey] !== undefined) {
+          const currentPos = positions[currentKey];
+          const currentWidth = widths[currentKey] || width;
+          const currentHeight = heights[currentKey] || height;
+          
+          // Re-animate to current position
+          animateTo(currentPos, currentWidth, currentHeight);
+        }
+      }
+    });
+    
+    return () => subscription.remove();
+  }, [isPortrait, positions, widths, heights]);
 
   /**
    * @returns true if current orientation is Portrait, false otherwise
@@ -119,39 +134,57 @@ export default ({
    * @returns Animated.CompositeAnimation
    * Use .start() to start the animation
    */
-  const animation = (val: Animated.Value) =>
-    Animated.spring(val, {
-      toValue: 1,
-      useNativeDriver: false,
-    });
-
   /**
-   * Helper function that updates the previous position
-   * of the tab to calculate the new position.
+   * Animate to a specific position
+   * @param position Position to animate to
    */
-  const updatePrevPos = () => {
-    setPos((pos) => {
-      setPrevPos(pos);
-      return pos;
-    });
-    animatedPos.setValue(0);
+  const animateTo = (position: number, tabWidth: number, tabHeight: number) => {
+    // Update the dimensions
+    setWidth(tabWidth);
+    setHeight(tabHeight);
+    
+    // Animate to the new position
+    Animated.spring(animatedLeftPosition, {
+      toValue: position,
+      useNativeDriver: false,
+      friction: 8,    // Lower friction = faster, but more bouncy
+      tension: 80,    // Higher tension = faster, more forceful movement
+      velocity: 10    // Initial velocity for quicker start
+    }).start();
   };
 
+  // The updatePrevPos function has been completely removed as it's no longer needed
+
+  /**
+   * Update tab positions when they are laid out
+   */
   useEffect(() => {
-    animation(animatedPos).start(() => {
-      updatePrevPos();
-    });
+    // Set initial position for the first render
+    if (state.routes.length > 0 && state.index >= 0) {
+      const currentKey = state.routes[state.index].key;
+      if (positions[currentKey] !== undefined) {
+        animatedLeftPosition.setValue(positions[currentKey]);
+      }
+    }
   }, []);
 
   /**
    * Animate whenever the navigation state changes
    */
   useEffect(() => {
-    if (state.index !== prevPos) {
-      setPrevPos(state.index);
-      animation(animatedPos).start();
+    const currentIndex = state.index;
+    const currentRoute = state.routes[currentIndex];
+    
+    if (positions[currentRoute.key] !== undefined) {
+      // Get the position and dimensions of the new tab
+      const newPosition = positions[currentRoute.key];
+      const newWidth = widths[currentRoute.key] || width;
+      const newHeight = heights[currentRoute.key] || height;
+      
+      // Animate to the new position with the new dimensions
+      animateTo(newPosition, newWidth, newHeight);
     }
-  }, [state.index]);
+  }, [state.index, positions]);
 
   // Compute activeBackgroundColor, if array provided, use array otherwise fallback to
   // default tabBarOptions property activeBackgroundColor (fallbacks for all unspecified tabs)
@@ -269,10 +302,31 @@ export default ({
      * @param {*} e
      */
     const onLayout = (e: any) => {
-      if (focused) {
-        setPos(e.nativeEvent.layout.x);
-        setWidth(e.nativeEvent.layout.width);
-        setHeight(e.nativeEvent.layout.height);
+      const newPos = e.nativeEvent.layout.x;
+      const newWidth = e.nativeEvent.layout.width;
+      const newHeight = e.nativeEvent.layout.height;
+      
+      // Store position and dimensions of this tab
+      setPositions(prev => ({
+        ...prev,
+        [route.key]: newPos
+      }));
+      
+      setWidths(prev => ({
+        ...prev,
+        [route.key]: newWidth
+      }));
+      
+      setHeights(prev => ({
+        ...prev,
+        [route.key]: newHeight
+      }));
+      
+      // If this is the focused tab, update the initial position
+      if (focused && Object.keys(positions).length === 0) {
+        animatedLeftPosition.setValue(newPos);
+        setWidth(newWidth);
+        setHeight(newHeight);
       }
     };
 
@@ -351,6 +405,9 @@ export default ({
     },
   });
 
+  // Cast the ScreenContainer component to any to bypass type checking
+  const ScreenContainerComponent = RNScreenContainer as any;
+
   const { options } = descriptors[state.routes[state.index].key];
   const tabBarVisible =
     options.tabBarVisible == undefined ? true : options.tabBarVisible;
@@ -363,7 +420,7 @@ export default ({
           overflow: "hidden",
         }}
       >
-        <ScreenContainer style={{ flex: 1 }}>
+        <ScreenContainerComponent style={{ flex: 1 }}>
           {state.routes.map((route, index) => {
             const descriptor = descriptors[route.key];
             const { unmountOnBlur } = descriptor.options;
@@ -396,7 +453,7 @@ export default ({
               </ResourceSavingScene>
             );
           })}
-        </ScreenContainer>
+        </ScreenContainerComponent>
       </View>
       {/* Tab Bar */}
       {tabBarVisible && (
@@ -419,16 +476,14 @@ export default ({
               style={
                 I18nManager.isRTL
                   ? {
-                      right: animatedPos.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [prevPos, pos],
-                      }),
+                      right: animatedLeftPosition,
+                      width,
+                      height,
                     }
                   : {
-                      left: animatedPos.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [prevPos, pos],
-                      }),
+                      left: animatedLeftPosition,
+                      width,
+                      height,
                     }
               }
               width={width}

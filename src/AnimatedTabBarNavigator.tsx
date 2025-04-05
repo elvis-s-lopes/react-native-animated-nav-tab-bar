@@ -1,12 +1,10 @@
 import * as React from "react";
-
 import { DotSize, IAppearanceOptions, TabButtonLayout, TabElementDisplayOptions } from './types';
 import {
   TabRouter,
   createNavigatorFactory,
   useNavigationBuilder,
 } from "@react-navigation/native";
-
 import TabBarElement from "./TabBarElement";
 
 const defaultAppearance: IAppearanceOptions = {
@@ -40,11 +38,11 @@ interface IBottomTabNavigatorProps {
   children: React.ReactNode;
   screenOptions?: any;
   tabBarOptions?: any;
-  appearance: Partial<IAppearanceOptions>;  
+  appearance: Partial<IAppearanceOptions>;
   lazy?: boolean;
 }
 
-const BottomTabNavigator = ({
+const BottomTabNavigator: React.FC<IBottomTabNavigatorProps> = ({
   initialRouteName,
   backBehavior,
   children,
@@ -53,8 +51,7 @@ const BottomTabNavigator = ({
   appearance,
   lazy = true,
   ...rest
-}: IBottomTabNavigatorProps) => {
-  
+}) => {
   const { state, descriptors, navigation } = useNavigationBuilder(TabRouter, {
     initialRouteName,
     backBehavior,
@@ -81,7 +78,7 @@ const BottomTabNavigator = ({
       tabBarOptions={finalTabBarOptions}
       appearance={finalAppearance}
     />
-  );
+  ) as React.ReactElement;
 }
 
 export default createNavigatorFactory(BottomTabNavigator);

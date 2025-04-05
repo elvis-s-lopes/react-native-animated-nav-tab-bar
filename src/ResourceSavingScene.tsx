@@ -1,33 +1,37 @@
 import * as React from "react";
 import { Platform, StyleSheet, View } from "react-native";
-import { Screen, screensEnabled } from "react-native-screens";
-
-/**
- * Originally from ResourceSavingScene.tsx react-navigation / bottom-tabs
- */
+import { Screen as RNScreen, screensEnabled } from "react-native-screens";
 
 const FAR_FAR_AWAY = 30000; // this should be big enough to move the whole view out of its container
 
-type Props = {
+// Define Props interface with explicit types
+interface Props {
   isVisible: boolean;
-  children: React.ReactNode;
+  children: any; // Using 'any' to bypass ReactNode type conflicts
   enabled?: boolean;
   style?: any;
-};
+}
 
 export default function ResourceSavingScene({
   isVisible,
   children,
   style,
   ...rest
-}: Props) {
+}: Props): JSX.Element {
   // react-native-screens is buggy on web
   if (screensEnabled?.() && Platform.OS !== 'web') {
-      return (
-        <Screen activityState={isVisible ? 2 : 0} style={style} {...rest}>
-          {children}
-        </Screen>
-      );
+    // Use type assertion to bypass type checking issues
+    const Screen = RNScreen as any;
+    
+    return (
+      <Screen 
+        activityState={isVisible ? 2 : 0} 
+        style={style} 
+        {...rest}
+      >
+        {children}
+      </Screen>
+    );
   }
 
   return (
@@ -37,7 +41,8 @@ export default function ResourceSavingScene({
         Platform.OS === "web"
           ? { display: isVisible ? "flex" : "none" }
           : null,
-        style]}
+        style
+      ]}
       // box-none doesn't seem to work properly on Android
       pointerEvents={isVisible ? 'auto' : 'none'}
     >
