@@ -1,5 +1,5 @@
 import * as React from "react";
-import { DotSize, IAppearanceOptions, TabButtonLayout, TabElementDisplayOptions } from './types';
+import { BlurIntensity, DotSize, IAppearanceOptions, TabButtonLayout, TabElementDisplayOptions } from './types';
 import {
   TabRouter,
   createNavigatorFactory,
@@ -21,6 +21,9 @@ const defaultAppearance: IAppearanceOptions = {
   tabButtonLayout: TabButtonLayout.HORIZONTAL,
   activeColors: undefined,
   activeTabBackgrounds: undefined,
+  blurEnabled: false,
+  blurIntensity: BlurIntensity.DEFAULT,
+  blurAmount: 10
 };
 
 const defaultTabBarOptions = {

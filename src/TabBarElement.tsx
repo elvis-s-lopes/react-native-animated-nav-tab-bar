@@ -65,6 +65,9 @@ export default ({
     dotSize,
     shadow,
     tabButtonLayout,
+    blurEnabled,
+    blurIntensity,
+    blurAmount
   } = appearance;
 
   const {
@@ -129,12 +132,6 @@ export default ({
   };
 
   /**
-   * Dot animation
-   * @param {*} val animation value
-   * @returns Animated.CompositeAnimation
-   * Use .start() to start the animation
-   */
-  /**
    * Animate to a specific position
    * @param position Position to animate to
    */
@@ -152,8 +149,6 @@ export default ({
       velocity: 10    // Initial velocity for quicker start
     }).start();
   };
-
-  // The updatePrevPos function has been completely removed as it's no longer needed
 
   /**
    * Update tab positions when they are laid out
@@ -466,6 +461,9 @@ export default ({
             horizontalPadding={horizontalPadding}
             tabBarBackground={tabBarBackground}
             shadow={shadow}
+            blurEnabled={blurEnabled}
+            blurIntensity={blurIntensity}
+            blurAmount={blurAmount}
           >
             {state.routes.map(createTab)}
             {/* Animated Dot / Background */}
